@@ -123,30 +123,60 @@ function yeehongdefaultpreferredlanguage_civicrm_alterSettingsFolders(&$metaData
   _yeehongdefaultpreferredlanguage_civix_civicrm_alterSettingsFolders($metaDataFolders);
 }
 
-// --- Functions below this ship commented out. Uncomment as required. ---
+/**
+ * Implements hook_civicrm_pre().
+ *
+ * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_pre
+ */
+function yeehongdefaultpreferredlanguage_civicrm_pre($op, $objectName, $id, &$params) {
+  if (strtolower($op) == 'create'
+    && in_array(
+      strtolower($objectName),
+      [
+        'contact',
+        'individual' ,
+        'organization',
+        'household'
+      ]
+    )
+  ) {
+    if (empty($params['preferred_language'])) {
+      $params['preferred_language'] = yeehongdefaultpreferredlanguage_getDefaultLanguage();
+    }
+  }
+}
 
 /**
- * Implements hook_civicrm_preProcess().
+ * Implements hook_civicrm_buildForm().
  *
- * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_preProcess
- *
-function yeehongdefaultpreferredlanguage_civicrm_preProcess($formName, &$form) {
+ * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_buildForm
+ */
+function yeehongdefaultpreferredlanguage_civicrm_buildForm($formName, &$form) {
+  if ('CRM_Contact_Form_Contact' == $formName
+    && $form->_action & CRM_Core_Action::ADD
+  ) {
+    $defaults['preferred_language']= yeehongdefaultpreferredlanguage_getDefaultLanguage();
+    $form->setDefaults($defaults);
+  }
 
-} // */
+  if ('CRM_Admin_Form_Options' == $formName
+    && $form->getVar('_gName') == 'languages'
+  ) {
+    $form->add('checkbox', 'is_default', ts('Default Option?'));
+    $form->assign('showDefault', TRUE);
+  }
+}
 
-/**
- * Implements hook_civicrm_navigationMenu().
- *
- * @link http://wiki.civicrm.org/confluence/display/CRMDOC/hook_civicrm_navigationMenu
- *
-function yeehongdefaultpreferredlanguage_civicrm_navigationMenu(&$menu) {
-  _yeehongdefaultpreferredlanguage_civix_insert_navigation_menu($menu, NULL, array(
-    'label' => E::ts('The Page'),
-    'name' => 'the_page',
-    'url' => 'civicrm/the-page',
-    'permission' => 'access CiviReport,access CiviContribute',
-    'operator' => 'OR',
-    'separator' => 0,
-  ));
-  _yeehongdefaultpreferredlanguage_civix_navigationMenu($menu);
-} // */
+/*
+*  Get default Preferred language.
+*
+* @return string
+*/
+function yeehongdefaultpreferredlanguage_getDefaultLanguage() {
+  $preferredLanguage = CRM_Contact_DAO_Contact::buildOptions(
+    'preferred_language',
+    'validate',
+    ['condition' => ' v.is_default = 1 ']
+  );
+  return reset($preferredLanguage);
+}
